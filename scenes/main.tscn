@@ -1,0 +1,365 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/player/player.png" id="1_player"]
+[ext_resource type="Script" path="res://scripts/player.gd" id="2_script"]
+[ext_resource type="Script" path="res://scripts/main.gd" id="3_main"]
+[ext_resource type="Script" path="res://scripts/ui_manager.gd" id="4_ui"]
+[ext_resource type="Script" path="res://scripts/world_renderer.gd" id="5_world"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(32, 48)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_harvest"]
+radius = 50.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.12, 0.12, 0.18, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.45, 0.8)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 4
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
+bg_color = Color(0.25, 0.65, 0.35, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.15, 0.45, 0.25, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sell"]
+bg_color = Color(0.85, 0.65, 0.1, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.65, 0.45, 0.05, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+content_margin_left = 20.0
+content_margin_top = 10.0
+content_margin_right = 20.0
+content_margin_bottom = 10.0
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
+
+[node name="Main" type="Node2D"]
+script = ExtResource("3_main")
+
+[node name="Background" type="ColorRect" parent="."]
+z_index = -20
+offset_left = -2000.0
+offset_top = -2000.0
+offset_right = 2000.0
+offset_bottom = 2000.0
+color = Color(0.18, 0.38, 0.58, 1)
+
+[node name="WorldTiles" type="Node2D" parent="."]
+z_index = -10
+script = ExtResource("5_world")
+
+[node name="Resources" type="Node2D" parent="."]
+
+[node name="Buildings" type="Node2D" parent="."]
+
+[node name="Player" type="CharacterBody2D" parent="."]
+collision_layer = 1
+collision_mask = 6
+script = ExtResource("2_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="Player"]
+texture = ExtResource("1_player")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Camera2D" type="Camera2D" parent="Player"]
+zoom = Vector2(3, 3)
+position_smoothing_enabled = true
+position_smoothing_speed = 6.0
+
+[node name="HarvestArea" type="Area2D" parent="Player"]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player/HarvestArea"]
+shape = SubResource("CircleShape2D_harvest")
+
+[node name="HarvestTimer" type="Timer" parent="Player"]
+wait_time = 0.5
+
+[node name="HarvestIndicator" type="Label" parent="Player"]
+offset_left = -35.0
+offset_top = -65.0
+offset_right = 35.0
+offset_bottom = -45.0
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+
+[node name="UI" type="CanvasLayer" parent="."]
+script = ExtResource("4_ui")
+
+[node name="TopBar" type="HBoxContainer" parent="UI"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = 50.0
+grow_horizontal = 2
+theme_override_constants/separation = 12
+
+[node name="CoinsLabel" type="Label" parent="UI/TopBar"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(1, 0.9, 0.2, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+text = "Coins: 0"
+
+[node name="ResourcesPanel" type="HBoxContainer" parent="UI/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 10
+theme_override_constants/separation = 12
+
+[node name="WoodLabel" type="Label" parent="UI/TopBar/ResourcesPanel"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.85, 0.6, 0.3, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+text = "Wood: 0"
+
+[node name="StoneLabel" type="Label" parent="UI/TopBar/ResourcesPanel"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.75, 0.75, 0.8, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+text = "Stone: 0"
+
+[node name="GemsLabel" type="Label" parent="UI/TopBar/ResourcesPanel"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.85, 0.4, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+text = "Gems: 0"
+
+[node name="BackpackLabel" type="Label" parent="UI/TopBar/ResourcesPanel"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+text = "0/10"
+
+[node name="SellButton" type="Button" parent="UI"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -90.0
+offset_top = -65.0
+offset_right = 90.0
+offset_bottom = -18.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_sell")
+text = "SELL ALL"
+
+[node name="UpgradePanel" type="PanelContainer" parent="UI"]
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 12.0
+offset_top = -140.0
+offset_right = 300.0
+offset_bottom = 140.0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="UI/UpgradePanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="UI/UpgradePanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "UPGRADES"
+horizontal_alignment = 1
+
+[node name="SpeedRow" type="HBoxContainer" parent="UI/UpgradePanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SpeedLabel" type="Label" parent="UI/UpgradePanel/VBox/SpeedRow"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.5, 0.9, 1, 1)
+text = "Speed"
+
+[node name="SpeedLevel" type="Label" parent="UI/UpgradePanel/VBox/SpeedRow"]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "Lv.1"
+
+[node name="SpeedCost" type="Label" parent="UI/UpgradePanel/VBox/SpeedRow"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 0.9, 0.2, 1)
+text = "50"
+
+[node name="SpeedBtn" type="Button" parent="UI/UpgradePanel/VBox/SpeedRow"]
+custom_minimum_size = Vector2(50, 30)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "BUY"
+
+[node name="BackpackRow" type="HBoxContainer" parent="UI/UpgradePanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BackpackLabel2" type="Label" parent="UI/UpgradePanel/VBox/BackpackRow"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.5, 1, 0.5, 1)
+text = "Backpack"
+
+[node name="BackpackLevel" type="Label" parent="UI/UpgradePanel/VBox/BackpackRow"]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "Lv.1"
+
+[node name="BackpackCost" type="Label" parent="UI/UpgradePanel/VBox/BackpackRow"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 0.9, 0.2, 1)
+text = "30"
+
+[node name="BackpackBtn" type="Button" parent="UI/UpgradePanel/VBox/BackpackRow"]
+custom_minimum_size = Vector2(50, 30)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "BUY"
+
+[node name="ExpandRow" type="HBoxContainer" parent="UI/UpgradePanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ExpandLabel" type="Label" parent="UI/UpgradePanel/VBox/ExpandRow"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 1, 0.5, 1)
+text = "Island"
+
+[node name="IslandLevel" type="Label" parent="UI/UpgradePanel/VBox/ExpandRow"]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "Lv.1"
+
+[node name="ExpandCost" type="Label" parent="UI/UpgradePanel/VBox/ExpandRow"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 0.9, 0.2, 1)
+text = "200"
+
+[node name="ExpandBtn" type="Button" parent="UI/UpgradePanel/VBox/ExpandRow"]
+custom_minimum_size = Vector2(50, 30)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "BUY"
+
+[node name="MessageLabel" type="Label" parent="UI"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = 100.0
+offset_right = 200.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+horizontal_alignment = 1
+
+[node name="HelpLabel" type="Label" parent="UI"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -210.0
+offset_top = 60.0
+offset_right = -12.0
+offset_bottom = 150.0
+grow_horizontal = 0
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(1, 1, 1, 0.5)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.5)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+text = "WASD / Arrows - Move
+Walk near resources to harvest
+Walk to Base to sell
+Walk to Shop for upgrades"
+horizontal_alignment = 2
