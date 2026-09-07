@@ -19,6 +19,7 @@ var walk_time: float = 0.0
 var is_moving: bool = false
 var original_y: float = 0.0
 var resources_in_range: Array = []
+var joystick_direction: Vector2 = Vector2.ZERO  # From touch joystick
 
 func _ready():
 	harvest_timer.wait_time = 0.5 / GameData.harvest_speed
@@ -36,11 +37,19 @@ func setup_extras(p_shadow: Sprite2D, p_dust: GPUParticles2D):
 
 func _physics_process(delta):
 	var input_dir = Vector2.ZERO
-	input_dir.x = Input.get_axis("move_left", "move_right")
-	input_dir.y = Input.get_axis("move_up", "move_down")
+	
+	# Keyboard input
+	var keyboard_dir = Vector2.ZERO
+	keyboard_dir.x = Input.get_axis("move_left", "move_right")
+	keyboard_dir.y = Input.get_axis("move_up", "move_down")
+	
+	# Touch joystick input (takes priority if active)
+	if joystick_direction.length() > 0.1:
+		input_dir = joystick_direction
+	elif keyboard_dir.length() > 0:
+		input_dir = keyboard_dir.normalized()
 	
 	if input_dir.length() > 0:
-		input_dir = input_dir.normalized()
 		is_moving = true
 	else:
 		is_moving = false
@@ -116,7 +125,6 @@ func _on_harvest_area_body_exited(body):
 func _on_harvest_tick():
 	if current_resource and is_instance_valid(current_resource) and is_harvesting:
 		if current_resource.check_depleted():
-			# This resource is gone, find another
 			resources_in_range.erase(current_resource)
 			current_resource = null
 			is_harvesting = false
@@ -129,12 +137,15 @@ func _on_harvest_tick():
 			return
 		
 		var res_type = current_resource.resource_type
-		var added = GameData.add_resource(res_type, 1)
+		var mult = GameData.get_harvest_multiplier(res_type)
+		var amount = int(mult)  # Harvest more per tick with tools
+		var added = GameData.add_resource(res_type, amount)
 		if added > 0:
-			current_resource.take_damage(1)
+			current_resource.take_damage(amount)
 			resource_collected.emit(res_type, added)
-			harvest_indicator.text = "+1 " + res_type.capitalize()
-			_spawn_floating_text("+1", Color.GREEN)
+			var mult_text = "" if mult <= 1.0 else " x%d" % int(mult)
+			harvest_indicator.text = "+%d %s%s" % [added, res_type.capitalize(), mult_text]
+			_spawn_floating_text("+%d%s" % [added, mult_text], Color.GREEN)
 			if current_resource.has_method("spawn_harvest_particles"):
 				current_resource.spawn_harvest_particles()
 		else:

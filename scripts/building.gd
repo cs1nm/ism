@@ -11,11 +11,12 @@ extends CharacterBody2D
 var player_nearby: bool = false
 var glow_time: float = 0.0
 
-signal sell_triggered()
-signal upgrade_requested(type: String)
-
 func _ready():
-	add_to_group("base")
+	if building_type != "base" and building_type != "shop":
+		# Crafting stations don't need "base" group for sell
+		pass
+	else:
+		pass  # Already added in main.gd
 	label.visible = false
 	if glow:
 		glow.visible = false
@@ -25,12 +26,20 @@ func _ready():
 func _process(delta):
 	if player_nearby:
 		label.visible = true
-		if building_type == "base":
-			label.text = "SELL RESOURCES"
-		elif building_type == "shop":
-			label.text = "UPGRADES"
+		match building_type:
+			"base":
+				label.text = "SELL RESOURCES"
+			"shop":
+				label.text = "UPGRADES"
+			"workbench":
+				label.text = "WORKBENCH"
+			"furnace":
+				label.text = "FURNACE"
+			"forge":
+				label.text = "FORGE"
+			"portal":
+				label.text = "PORTAL"
 		
-		# Pulsing glow effect
 		if glow:
 			glow.visible = true
 			glow_time += delta * 3.0
@@ -43,7 +52,6 @@ func _process(delta):
 func _on_body_entered(body):
 	if body.is_in_group("player"):
 		player_nearby = true
-		# Scale up animation
 		var tween = create_tween()
 		tween.set_ease(Tween.EASE_OUT)
 		tween.set_trans(Tween.TRANS_BACK)
@@ -53,7 +61,6 @@ func _on_body_exited(body):
 	if body.is_in_group("player"):
 		player_nearby = false
 		label.visible = false
-		# Scale back
 		var tween = create_tween()
 		tween.set_ease(Tween.EASE_OUT)
 		tween.tween_property(sprite, "scale", Vector2.ONE, 0.2)

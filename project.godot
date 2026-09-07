@@ -12,6 +12,7 @@ config/features=PackedStringArray("4.3", "GL Compatibility")
 [autoload]
 
 GameData="*res://scripts/game_data.gd"
+LocationManager="*res://scripts/location_manager.gd"
 
 [display]
 

@@ -15,6 +15,11 @@ func _ready():
 	tex_water = load("res://assets/sprites/world/water.png")
 	tex_sand = load("res://assets/sprites/world/sand.png")
 
+func set_textures(ground: Texture2D, water: Texture2D, sand: Texture2D):
+	tex_grass = ground
+	tex_water = water
+	tex_sand = sand
+
 func set_tiles(new_tiles: Array):
 	tiles = new_tiles
 	_rebuild_tiles()

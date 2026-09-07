@@ -4,7 +4,9 @@ extends CanvasLayer
 @onready var wood_label: Label = $TopBar/ResourcesPanel/WoodLabel
 @onready var stone_label: Label = $TopBar/ResourcesPanel/StoneLabel
 @onready var gems_label: Label = $TopBar/ResourcesPanel/GemsLabel
+@onready var ingots_label: Label = $TopBar/ResourcesPanel/IngotsLabel
 @onready var backpack_label: Label = $TopBar/ResourcesPanel/BackpackLabel
+@onready var tools_label: Label = $TopBar/ToolsLabel
 
 @onready var upgrade_panel: PanelContainer = $UpgradePanel
 @onready var speed_cost_label: Label = $UpgradePanel/VBox/SpeedRow/SpeedCost
@@ -114,7 +116,16 @@ func _update_ui():
 	wood_label.text = "Wood: %d" % GameData.wood
 	stone_label.text = "Stone: %d" % GameData.stone
 	gems_label.text = "Gems: %d" % GameData.gems
+	ingots_label.text = "Ingots: %d" % GameData.ingots
 	backpack_label.text = "%d/%d" % [GameData.current_backpack, GameData.max_backpack]
+	
+	# Show equipped tools
+	var tools_text = ""
+	if GameData.axe_level > 0:
+		tools_text += "Axe Lv%d " % GameData.axe_level
+	if GameData.pickaxe_level > 0:
+		tools_text += "Pick Lv%d" % GameData.pickaxe_level
+	tools_label.text = tools_text if tools_text != "" else "No tools"
 	
 	speed_cost_label.text = "%d" % GameData.get_speed_upgrade_cost()
 	backpack_cost_label.text = "%d" % GameData.get_backpack_upgrade_cost()
