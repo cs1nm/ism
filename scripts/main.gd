@@ -6,7 +6,7 @@ extends Node2D
 @onready var crafting_ui: CanvasLayer = $CraftingUI
 @onready var world_tiles: Node2D = $WorldTiles
 @onready var resources_container: Node2D = $Resources
-@onready var buildings_container: Node2D = $Buildings
+@onready var enemies_container: Node2D = $Buildings
 @onready var decor_container: Node2D = $Decor
 
 var island_radius: float = 400.0
@@ -46,6 +46,14 @@ func _ready():
 	
 	# Build the current location
 	_build_location()
+	
+	# Create enemies container
+	enemies_container = Node2D.new()
+	enemies_container.name = "Enemies"
+	add_child(enemies_container)
+	
+	# Spawn enemies for current location
+	_spawn_enemies()
 	
 	# Create touch joystick
 	_setup_joystick()
@@ -134,6 +142,10 @@ func _clear_world():
 	# Remove decorations
 	for child in decor_container.get_children():
 		child.queue_free()
+	# Remove enemies
+	if enemies_container:
+		for child in enemies_container.get_children():
+			child.queue_free()
 
 func _on_location_changed(new_location: String):
 	_build_location()
@@ -640,3 +652,115 @@ func _create_glow_texture() -> ImageTexture:
 				var alpha = int(60 * (1.0 - dist * dist))
 				img.set_pixel(x, y, Color(0.36, 0.88, 0.93, alpha / 255.0))
 	return ImageTexture.create_from_image(img)
+
+func _spawn_enemies():
+	var loc = LocationManager.current_location
+	var enemy_types = []
+	var count = 0
+	
+	match loc:
+		"starter":
+			enemy_types = ["slime"]
+			count = 3
+		"ice":
+			enemy_types = ["ice_elemental"]
+			count = 4
+		"volcanic":
+			enemy_types = ["fire_elemental"]
+			count = 3
+		"forest":
+			enemy_types = ["forest_spirit"]
+			count = 4
+	
+	for i in range(count):
+		var enemy_type = enemy_types[randi() % enemy_types.size()]
+		_spawn_enemy(enemy_type, _random_island_pos())
+
+func _spawn_enemy(enemy_type: String, pos: Vector2):
+	# Don't spawn near base
+	if pos.distance_to(Vector2(0, 50)) < 100:
+		pos = _random_island_pos()
+	
+	var enemy = CharacterBody2D.new()
+	enemy.position = pos
+	
+	var script_enemy = load("res://scripts/enemy.gd")
+	enemy.set_script(script_enemy)
+	enemy.enemy_type = enemy_type
+	
+	# Set stats based on type
+	match enemy_type:
+		"slime":
+			enemy.max_hp = 3
+			enemy.damage = 1
+			enemy.move_speed = 30.0
+		"ice_elemental":
+			enemy.max_hp = 5
+			enemy.damage = 2
+			enemy.move_speed = 40.0
+		"fire_elemental":
+			enemy.max_hp = 8
+			enemy.damage = 3
+			enemy.move_speed = 45.0
+		"forest_spirit":
+			enemy.max_hp = 4
+			enemy.damage = 2
+			enemy.move_speed = 35.0
+	
+	# Shadow
+	var shadow = Sprite2D.new()
+	shadow.name = "Shadow"
+	shadow.texture = _create_shadow_texture(20, 8)
+	shadow.position = Vector2(0, 12)
+	shadow.z_index = -1
+	enemy.add_child(shadow)
+	
+	# Sprite
+	var sprite = Sprite2D.new()
+	sprite.name = "Sprite2D"
+	sprite.texture = load("res://assets/sprites/enemies/%s.png" % enemy_type)
+	enemy.add_child(sprite)
+	
+	# Collision
+	var col = CollisionShape2D.new()
+	col.name = "CollisionShape2D"
+	var shape = CircleShape2D.new()
+	shape.radius = 10.0
+	col.shape = shape
+	enemy.add_child(col)
+	enemy.collision_layer = 8
+	enemy.collision_mask = 0
+	
+	# Connect death signal
+	enemy.enemy_died.connect(_on_enemy_died)
+	
+	enemies_container.add_child(enemy)
+
+func _on_enemy_died(enemy: CharacterBody2D, drops: Dictionary):
+	# Apply drops
+	for resource_type in drops:
+		var amount = drops[resource_type]
+		match resource_type:
+			"coins":
+				GameData.coins += amount
+				GameData.notify_coins_changed()
+			"wood", "stone", "gem", "ingot":
+				GameData.add_resource(resource_type, amount)
+	
+	# Floating text
+	var text = ""
+	for resource_type in drops:
+		text += "+%d %s\n" % [drops[resource_type], resource_type.capitalize()]
+	
+	var label = Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", Color.YELLOW)
+	label.add_theme_font_size_override("font_size", 14)
+	label.position = enemy.global_position + Vector2(-20, -30)
+	label.z_index = 100
+	add_child(label)
+	
+	var tween = create_tween()
+	tween.tween_property(label, "position:y", label.position.y - 40, 1.5)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 1.5)
+	tween.tween_callback(label.queue_free)

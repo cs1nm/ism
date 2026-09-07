@@ -3,6 +3,8 @@ extends CharacterBody2D
 signal near_resource(resource_node)
 signal near_base()
 signal resource_collected(type: String, amount: int)
+signal player_damaged(amount: int)
+signal player_healed(amount: int)
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var harvest_area: Area2D = $HarvestArea
@@ -21,6 +23,19 @@ var original_y: float = 0.0
 var resources_in_range: Array = []
 var joystick_direction: Vector2 = Vector2.ZERO  # From touch joystick
 
+# HP system
+var max_hp: int = 10
+var hp: int = 10
+var invulnerable: bool = false
+var invulnerable_time: float = 0.5
+
+# Combat
+var attack_range: float = 40.0
+var attack_damage: int = 2
+var attack_cooldown: float = 0.8
+var attack_timer: float = 0.0
+var enemies_in_range: Array = []
+
 func _ready():
 	harvest_timer.wait_time = 0.5 / GameData.harvest_speed
 	harvest_timer.timeout.connect(_on_harvest_tick)
@@ -28,6 +43,20 @@ func _ready():
 	harvest_area.body_exited.connect(_on_harvest_area_body_exited)
 	harvest_indicator.visible = false
 	original_y = sprite.position.y
+	
+	# Create combat area
+	var combat_area = Area2D.new()
+	combat_area.name = "CombatArea"
+	combat_area.collision_layer = 0
+	combat_area.collision_mask = 8  # Enemy layer
+	var combat_col = CollisionShape2D.new()
+	var combat_shape = CircleShape2D.new()
+	combat_shape.radius = attack_range
+	combat_col.shape = combat_shape
+	combat_area.add_child(combat_col)
+	add_child(combat_area)
+	combat_area.body_entered.connect(_on_combat_area_body_entered)
+	combat_area.body_exited.connect(_on_combat_area_body_exited)
 
 func setup_extras(p_shadow: Sprite2D, p_dust: GPUParticles2D):
 	shadow = p_shadow
@@ -36,6 +65,25 @@ func setup_extras(p_shadow: Sprite2D, p_dust: GPUParticles2D):
 		dust_particles.emitting = false
 
 func _physics_process(delta):
+	# Attack cooldown
+	if attack_timer > 0:
+		attack_timer -= delta
+	
+	# Auto-attack nearest enemy
+	if attack_timer <= 0 and enemies_in_range.size() > 0:
+		var closest_enemy = null
+		var closest_dist = INF
+		for enemy in enemies_in_range:
+			if is_instance_valid(enemy):
+				var dist = global_position.distance_to(enemy.global_position)
+				if dist < closest_dist:
+					closest_dist = dist
+					closest_enemy = enemy
+		
+		if closest_enemy:
+			_attack_enemy(closest_enemy)
+			attack_timer = attack_cooldown
+	
 	var input_dir = Vector2.ZERO
 	
 	# Keyboard input
@@ -171,3 +219,66 @@ func _spawn_floating_text(text: String, color: Color):
 	tween.tween_property(label, "position:y", label.position.y - 50, 1.0)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 1.0)
 	tween.tween_callback(label.queue_free)
+
+func take_damage(amount: int):
+	if invulnerable or hp <= 0:
+		return
+	
+	hp -= amount
+	player_damaged.emit(amount)
+	
+	# Visual feedback
+	sprite.modulate = Color(1, 0.3, 0.3)
+	var tween = create_tween()
+	tween.tween_property(sprite, "modulate", Color.WHITE, 0.3)
+	
+	# Knockback
+	if velocity.length() > 0:
+		var knockback_dir = -velocity.normalized()
+		var knockback_vel = knockback_dir * 150
+		var kb_tween = create_tween()
+		kb_tween.tween_property(self, "position", position + knockback_dir * 20, 0.2)
+	
+	# Invulnerability frames
+	invulnerable = true
+	await get_tree().create_timer(invulnerable_time).timeout
+	invulnerable = false
+	
+	_spawn_floating_text("-%d HP" % amount, Color.RED)
+	
+	if hp <= 0:
+		_die()
+
+func heal(amount: int):
+	hp = min(hp + amount, max_hp)
+	player_healed.emit(amount)
+	_spawn_floating_text("+%d HP" % amount, Color.GREEN)
+
+func _die():
+	# Respawn at base
+	hp = max_hp
+	position = Vector2(0, 80)
+	player_healed.emit(0)  # Signal to update UI
+
+func _on_combat_area_body_entered(body):
+	if body.is_in_group("enemies"):
+		enemies_in_range.append(body)
+
+func _on_combat_area_body_exited(body):
+	if body in enemies_in_range:
+		enemies_in_range.erase(body)
+
+func _attack_enemy(enemy: Node2D):
+	if not is_instance_valid(enemy):
+		return
+	
+	# Visual feedback - swing animation
+	var tween = create_tween()
+	tween.tween_property(sprite, "rotation", 0.3, 0.1)
+	tween.tween_property(sprite, "rotation", -0.3, 0.1)
+	tween.tween_property(sprite, "rotation", 0.0, 0.1)
+	
+	# Deal damage
+	if enemy.has_method("take_damage"):
+		enemy.take_damage(attack_damage)
+		_spawn_floating_text("-%d" % attack_damage, Color.ORANGE)

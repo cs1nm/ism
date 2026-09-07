@@ -25,6 +25,8 @@ extends CanvasLayer
 
 var player_node: Node2D = null
 var expand_signal_connected: bool = false
+var hp_bar: ProgressBar = null
+var hp_label: Label = null
 
 func _ready():
 	upgrade_panel.visible = false
@@ -35,7 +37,50 @@ func _ready():
 	sell_button.visible = false
 	_update_ui()
 	_add_vignette()
+	_create_hp_bar()
 	_animate_ui_in()
+
+func _create_hp_bar():
+	# HP bar container
+	var hp_container = VBoxContainer.new()
+	hp_container.name = "HPContainer"
+	hp_container.position = Vector2(20, 60)
+	hp_container.size = Vector2(150, 20)
+	add_child(hp_container)
+	
+	# HP label
+	hp_label = Label.new()
+	hp_label.name = "HPLabel"
+	hp_label.text = "HP: 10/10"
+	hp_label.add_theme_font_size_override("font_size", 14)
+	hp_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+	hp_label.add_theme_color_override("font_shadow_color", Color.BLACK)
+	hp_label.add_theme_constant_override("shadow_offset_x", 2)
+	hp_label.add_theme_constant_override("shadow_offset_y", 2)
+	hp_container.add_child(hp_label)
+	
+	# HP progress bar
+	hp_bar = ProgressBar.new()
+	hp_bar.name = "HPBar"
+	hp_bar.min_value = 0
+	hp_bar.max_value = 10
+	hp_bar.value = 10
+	hp_bar.size = Vector2(150, 16)
+	hp_bar.show_percentage = false
+	hp_container.add_child(hp_bar)
+	
+	# Style the HP bar
+	var style_bg = StyleBoxFlat.new()
+	style_bg.bg_color = Color(0.2, 0.1, 0.1, 0.8)
+	style_bg.border_color = Color(0.4, 0.2, 0.2, 1.0)
+	style_bg.set_border_width_all(2)
+	style_bg.set_corner_radius_all(4)
+	hp_bar.add_theme_stylebox_override("background", style_bg)
+	
+	var style_fill = StyleBoxFlat.new()
+	style_fill.bg_color = Color(0.8, 0.2, 0.2, 1.0)
+	style_fill.set_corner_radius_all(2)
+	hp_bar.add_theme_stylebox_override("fill", style_fill)
 
 func _add_vignette():
 	var vignette = TextureRect.new()
@@ -118,6 +163,21 @@ func _update_ui():
 	gems_label.text = "Gems: %d" % GameData.gems
 	ingots_label.text = "Ingots: %d" % GameData.ingots
 	backpack_label.text = "%d/%d" % [GameData.current_backpack, GameData.max_backpack]
+	
+	# Update HP bar
+	if player_node and hp_bar and hp_label:
+		hp_bar.max_value = player_node.max_hp
+		hp_bar.value = player_node.hp
+		hp_label.text = "HP: %d/%d" % [player_node.hp, player_node.max_hp]
+		
+		# Color based on HP percentage
+		var hp_percent = float(player_node.hp) / float(player_node.max_hp)
+		if hp_percent > 0.6:
+			hp_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
+		elif hp_percent > 0.3:
+			hp_label.add_theme_color_override("font_color", Color(1, 1, 0.3))
+		else:
+			hp_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
 	
 	# Show equipped tools
 	var tools_text = ""
