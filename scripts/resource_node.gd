@@ -9,7 +9,6 @@ var is_dead: bool = false
 var sway_time: float = 0.0
 
 @onready var sprite: Sprite2D = $Sprite2D
-@onready var shadow: Sprite2D = $Shadow
 @onready var respawn_timer: Timer = $RespawnTimer
 @onready var collision: CollisionShape2D = $CollisionShape2D
 @onready var harvest_particles: GPUParticles2D = $HarvestParticles
@@ -25,13 +24,15 @@ func _ready():
 	harvest_particles.emitting = false
 	# Random start phase for sway
 	sway_time = randf() * TAU
+	# LOCK position - resources don't move
+	velocity = Vector2.ZERO
 
 func _process(delta):
 	if not is_dead:
-		# Gentle swaying animation
-		sway_time += delta * 2.0
-		sprite.rotation = sin(sway_time) * 0.03
-		sprite.position.x = sin(sway_time * 0.7) * 1.0
+		# ONLY trees sway gently, rocks are completely static
+		if resource_type == "wood":
+			sway_time += delta * 1.5
+			sprite.rotation = sin(sway_time) * 0.02
 
 func take_damage(amount: int):
 	current_hp -= amount
@@ -42,23 +43,21 @@ func take_damage(amount: int):
 func _update_visual():
 	var ratio = float(current_hp) / float(max_hp)
 	sprite.modulate = Color(1, 1, 1, 0.5 + 0.5 * ratio)
-	# Shake effect
+	# Shake effect (brief, returns to original position)
 	var original_pos = position
 	var tween = create_tween()
-	tween.tween_property(self, "position", original_pos + Vector2(3, 0), 0.05)
-	tween.tween_property(self, "position", original_pos - Vector2(3, 0), 0.05)
-	tween.tween_property(self, "position", original_pos + Vector2(1, 0), 0.05)
-	tween.tween_property(self, "position", original_pos, 0.05)
+	tween.tween_property(self, "position", original_pos + Vector2(2, 0), 0.04)
+	tween.tween_property(self, "position", original_pos - Vector2(2, 0), 0.04)
+	tween.tween_property(self, "position", original_pos + Vector2(1, 0), 0.04)
+	tween.tween_property(self, "position", original_pos, 0.04)
 
 func spawn_harvest_particles():
 	harvest_particles.emitting = true
-	# Stop after short burst
 	var timer = get_tree().create_timer(0.3)
 	timer.timeout.connect(func(): harvest_particles.emitting = false)
 
 func _deplete():
 	is_dead = true
-	# Fade out animation
 	var tween = create_tween()
 	tween.tween_property(sprite, "modulate:a", 0.0, 0.3)
 	tween.tween_property(sprite, "scale", Vector2(0.5, 0.5), 0.3)
@@ -79,7 +78,6 @@ func _on_respawn():
 	sprite.visible = true
 	sprite.modulate = Color.WHITE
 	collision.set_deferred("disabled", false)
-	# Pop-in animation
 	sprite.scale = Vector2(0.1, 0.1)
 	var tween = create_tween()
 	tween.set_ease(Tween.EASE_OUT)

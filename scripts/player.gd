@@ -10,7 +10,6 @@ signal resource_collected(type: String, amount: int)
 @onready var camera: Camera2D = $Camera2D
 @onready var harvest_indicator: Label = $HarvestIndicator
 
-# These will be set after main.gd creates them
 var shadow: Sprite2D = null
 var dust_particles: GPUParticles2D = null
 
@@ -19,6 +18,7 @@ var is_harvesting: bool = false
 var walk_time: float = 0.0
 var is_moving: bool = false
 var original_y: float = 0.0
+var resources_in_range: Array = []
 
 func _ready():
 	harvest_timer.wait_time = 0.5 / GameData.harvest_speed
@@ -41,8 +41,6 @@ func _physics_process(delta):
 	
 	if input_dir.length() > 0:
 		input_dir = input_dir.normalized()
-		is_harvesting = false
-		harvest_indicator.visible = false
 		is_moving = true
 	else:
 		is_moving = false
@@ -50,7 +48,7 @@ func _physics_process(delta):
 	velocity = input_dir * GameData.move_speed
 	move_and_slide()
 	
-	# Walk animation - bob and tilt
+	# Walk animation
 	if is_moving:
 		walk_time += delta * 12.0
 		sprite.position.y = original_y + sin(walk_time) * 2.0
@@ -58,46 +56,78 @@ func _physics_process(delta):
 		if dust_particles:
 			dust_particles.emitting = true
 		
-		# Flip sprite based on direction
 		if velocity.x < 0:
 			sprite.flip_h = true
 		elif velocity.x > 0:
 			sprite.flip_h = false
 	else:
-		# Return to idle
 		sprite.position.y = lerp(sprite.position.y, original_y, delta * 10.0)
 		sprite.rotation = lerp(sprite.rotation, 0.0, delta * 10.0)
 		walk_time = 0.0
 		if dust_particles:
 			dust_particles.emitting = false
 	
-	# Shadow follows player
 	if shadow:
 		shadow.global_position = global_position + Vector2(0, 20)
+	
+	# Auto-start harvesting if near a resource and not already harvesting
+	if not is_harvesting and resources_in_range.size() > 0:
+		# Find closest valid resource
+		var closest = null
+		var closest_dist = INF
+		for res in resources_in_range:
+			if is_instance_valid(res) and not res.check_depleted():
+				var dist = global_position.distance_to(res.global_position)
+				if dist < closest_dist:
+					closest_dist = dist
+					closest = res
+		if closest:
+			current_resource = closest
+			is_harvesting = true
+			harvest_timer.start()
+			harvest_indicator.visible = true
+			harvest_indicator.text = "Mining..."
 
 func _on_harvest_area_body_entered(body):
 	if body.is_in_group("resources"):
-		current_resource = body
-		is_harvesting = true
-		harvest_timer.start()
-		harvest_indicator.visible = true
-		harvest_indicator.text = "Mining..."
-		near_resource.emit(body)
+		if not body.check_depleted():
+			resources_in_range.append(body)
+			near_resource.emit(body)
 	elif body.is_in_group("base"):
 		near_base.emit()
 
 func _on_harvest_area_body_exited(body):
+	if body in resources_in_range:
+		resources_in_range.erase(body)
 	if body == current_resource:
 		current_resource = null
 		is_harvesting = false
 		harvest_timer.stop()
 		harvest_indicator.visible = false
+	# If we lost our resource, try to find another one
+	if resources_in_range.size() > 0 and not is_harvesting:
+		# Will be picked up in _physics_process
+		pass
+	elif resources_in_range.size() == 0:
+		is_harvesting = false
+		harvest_timer.stop()
+		harvest_indicator.visible = false
 
 func _on_harvest_tick():
-	if current_resource and is_harvesting:
+	if current_resource and is_instance_valid(current_resource) and is_harvesting:
+		if current_resource.check_depleted():
+			# This resource is gone, find another
+			resources_in_range.erase(current_resource)
+			current_resource = null
+			is_harvesting = false
+			harvest_timer.stop()
+			harvest_indicator.visible = false
+			return
+		
 		if GameData.current_backpack >= GameData.max_backpack:
 			harvest_indicator.text = "FULL!"
 			return
+		
 		var res_type = current_resource.resource_type
 		var added = GameData.add_resource(res_type, 1)
 		if added > 0:
@@ -105,16 +135,17 @@ func _on_harvest_tick():
 			resource_collected.emit(res_type, added)
 			harvest_indicator.text = "+1 " + res_type.capitalize()
 			_spawn_floating_text("+1", Color.GREEN)
-			# Spawn harvest particles
 			if current_resource.has_method("spawn_harvest_particles"):
 				current_resource.spawn_harvest_particles()
 		else:
 			harvest_indicator.text = "FULL!"
 		
 		if current_resource and current_resource.check_depleted():
+			resources_in_range.erase(current_resource)
 			current_resource = null
 			is_harvesting = false
 			harvest_timer.stop()
+			harvest_indicator.visible = false
 
 func _spawn_floating_text(text: String, color: Color):
 	var label = Label.new()

@@ -6,38 +6,65 @@ extends Node2D
 @onready var world_tiles: Node2D = $WorldTiles
 @onready var resources_container: Node2D = $Resources
 @onready var buildings_container: Node2D = $Buildings
+@onready var decor_container: Node2D = $Decor
 
-# Island parameters
 var island_radius: float = 400.0
-var tile_size: float = 64.0
+var tile_size: float = 16.0
+
+# Decoration textures
+var tex_bush: Texture2D
+var tex_flower: Texture2D
+var tex_flower2: Texture2D
+var tex_mushroom: Texture2D
+var tex_stump: Texture2D
+var tex_small_rock: Texture2D
+var tex_fence: Texture2D
+var tex_grass_tuft: Texture2D
+var tex_path: Texture2D
 
 func _ready():
 	add_to_group("world")
+	
+	# Load decoration textures
+	tex_bush = load("res://assets/sprites/decor/bush.png")
+	tex_flower = load("res://assets/sprites/decor/flower.png")
+	tex_flower2 = load("res://assets/sprites/decor/flower2.png")
+	tex_mushroom = load("res://assets/sprites/decor/mushroom.png")
+	tex_stump = load("res://assets/sprites/decor/stump.png")
+	tex_small_rock = load("res://assets/sprites/decor/small_rock.png")
+	tex_fence = load("res://assets/sprites/decor/fence.png")
+	tex_grass_tuft = load("res://assets/sprites/decor/grass_tuft.png")
+	tex_path = load("res://assets/sprites/world/path.png")
+	
 	ui.set_player(player)
 	_add_player_extras()
 	_generate_island()
+	_spawn_path()
+	_spawn_fence_around_base()
+	_spawn_decorations()
 	_spawn_initial_resources()
 	_spawn_buildings()
 	player.add_to_group("player")
 	_spawn_ambient_particles()
+	
+	# Move player to start position near base
+	player.position = Vector2(0, 80)
 
 func _add_player_extras():
-	# Add shadow
 	var shadow = Sprite2D.new()
 	shadow.name = "Shadow"
 	shadow.texture = _create_shadow_texture(24, 10)
-	shadow.position = Vector2(0, 20)
+	shadow.position = Vector2(0, 12)
 	shadow.z_index = -1
 	player.add_child(shadow)
-	player.move_child(shadow, 0)  # Behind sprite
+	player.move_child(shadow, 0)
 	
-	# Add dust particles
 	var dust = GPUParticles2D.new()
 	dust.name = "DustParticles"
 	dust.amount = 8
 	dust.lifetime = 0.6
 	dust.emitting = false
-	dust.position = Vector2(0, 20)
+	dust.position = Vector2(0, 12)
 	var dust_mat = ParticleProcessMaterial.new()
 	dust_mat.direction = Vector3(0, -1, 0)
 	dust_mat.spread = 30.0
@@ -46,34 +73,29 @@ func _add_player_extras():
 	dust_mat.gravity = Vector3(0, 40, 0)
 	dust_mat.scale_min = 0.5
 	dust_mat.scale_max = 1.0
-	dust_mat.color = Color(0.8, 0.75, 0.6, 0.6)
+	dust_mat.color = Color(0.6, 0.55, 0.4, 0.5)
 	dust.process_material = dust_mat
 	player.add_child(dust)
-	
-	# Tell player script about these nodes
 	player.setup_extras(shadow, dust)
 
 func _spawn_ambient_particles():
-	# Floating leaves/pollen
 	var ambient = GPUParticles2D.new()
 	ambient.name = "AmbientParticles"
-	ambient.amount = 20
-	ambient.lifetime = 6.0
+	ambient.amount = 15
+	ambient.lifetime = 8.0
 	ambient.emitting = true
-	ambient.position = Vector2(0, 0)
 	var mat = ParticleProcessMaterial.new()
-	mat.direction = Vector3(1, 0.5, 0)
+	mat.direction = Vector3(1, 0.3, 0)
 	mat.spread = 45.0
-	mat.initial_velocity_min = 5.0
-	mat.initial_velocity_max = 15.0
-	mat.gravity = Vector3(0, 10, 0)
-	mat.scale_min = 0.3
-	mat.scale_max = 0.8
-	mat.color = Color(0.9, 0.85, 0.4, 0.4)
+	mat.initial_velocity_min = 3.0
+	mat.initial_velocity_max = 10.0
+	mat.gravity = Vector3(0, 5, 0)
+	mat.scale_min = 0.2
+	mat.scale_max = 0.5
+	mat.color = Color(0.7, 0.8, 0.6, 0.3)
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	mat.emission_box_extents = Vector3(300, 200, 0)
+	mat.emission_box_extents = Vector3(250, 180, 0)
 	ambient.process_material = mat
-	# Attach to player so particles follow camera
 	player.add_child(ambient)
 	player.move_child(ambient, 0)
 
@@ -95,17 +117,96 @@ func _generate_island():
 	
 	world_tiles.set_tiles(tiles_data)
 
+func _spawn_path():
+	# Path from base to shop
+	var base_pos = Vector2(0, 50)
+	var shop_pos = Vector2(200, 50)
+	var dir = (shop_pos - base_pos).normalized()
+	var dist = base_pos.distance_to(shop_pos)
+	var steps = int(dist / tile_size)
+	
+	for i in range(steps + 1):
+		var pos = base_pos + dir * i * tile_size
+		_place_decor_sprite(tex_path, pos, -5)
+		# Add some width to the path
+		var perp = Vector2(-dir.y, dir.x)
+		_place_decor_sprite(tex_path, pos + perp * tile_size, -5)
+		_place_decor_sprite(tex_path, pos - perp * tile_size, -5)
+
+func _spawn_fence_around_base():
+	var base_pos = Vector2(0, 50)
+	var fence_radius = 80.0
+	var fence_spacing = 16.0
+	var num_posts = int(TAU * fence_radius / fence_spacing)
+	
+	for i in range(num_posts):
+		var angle = float(i) / float(num_posts) * TAU
+		var pos = base_pos + Vector2(cos(angle), sin(angle)) * fence_radius
+		
+		# Leave gap for entrance (south side)
+		if angle > 1.3 and angle < 1.85:
+			continue
+		
+		_place_decor_sprite(tex_fence, pos, 2)
+
+func _spawn_decorations():
+	var rng = RandomNumberGenerator.new()
+	rng.seed = 12345
+	
+	var decor_types = [
+		{"tex": tex_bush, "weight": 20, "z": 0},
+		{"tex": tex_flower, "weight": 25, "z": -1},
+		{"tex": tex_flower2, "weight": 20, "z": -1},
+		{"tex": tex_mushroom, "weight": 8, "z": -1},
+		{"tex": tex_stump, "weight": 5, "z": 0},
+		{"tex": tex_small_rock, "weight": 15, "z": -2},
+		{"tex": tex_grass_tuft, "weight": 30, "z": -2},
+	]
+	
+	# Total weight
+	var total_weight = 0
+	for d in decor_types:
+		total_weight += d.weight
+	
+	# Spawn ~60 decorations
+	for i in range(60):
+		var pos = _random_island_pos_rng(rng)
+		
+		# Don't spawn too close to buildings
+		if pos.distance_to(Vector2(0, 50)) < 90:
+			continue
+		if pos.distance_to(Vector2(200, 50)) < 60:
+			continue
+		# Don't spawn on path
+		if abs(pos.y - 50) < 24 and pos.x > -10 and pos.x < 210:
+			continue
+		
+		# Pick random decoration type
+		var roll = rng.randi() % total_weight
+		var cumul = 0
+		var chosen = decor_types[0]
+		for d in decor_types:
+			cumul += d.weight
+			if roll < cumul:
+				chosen = d
+				break
+		
+		_place_decor_sprite(chosen.tex, pos, chosen.z)
+
+func _place_decor_sprite(tex: Texture2D, pos: Vector2, z_offset: int):
+	var sprite = Sprite2D.new()
+	sprite.texture = tex
+	sprite.position = pos
+	sprite.z_index = z_offset
+	decor_container.add_child(sprite)
+
 func _spawn_initial_resources():
 	for i in range(8):
 		_spawn_resource("tree", _random_island_pos())
 	for i in range(6):
 		_spawn_resource("rock", _random_island_pos())
-	# Gold only from location 2+
-	# for i in range(3):
-	# 	_spawn_resource("gold", _random_island_pos())
 
 func _spawn_resource(type: String, pos: Vector2):
-	# Avoid spawning on buildings
 	if pos.distance_to(Vector2(0, 50)) < 100 or pos.distance_to(Vector2(200, 50)) < 100:
 		pos = _random_island_pos()
 	
@@ -116,7 +217,7 @@ func _spawn_resource(type: String, pos: Vector2):
 	var script_res = load("res://scripts/resource_node.gd")
 	node.set_script(script_res)
 	
-	# Shadow (behind everything)
+	# Shadow
 	var shadow = Sprite2D.new()
 	shadow.name = "Shadow"
 	shadow.texture = _create_shadow_texture(28, 12)
@@ -144,7 +245,7 @@ func _spawn_resource(type: String, pos: Vector2):
 	var col = CollisionShape2D.new()
 	col.name = "CollisionShape2D"
 	var shape = RectangleShape2D.new()
-	shape.size = Vector2(40, 40)
+	shape.size = Vector2(18, 18)
 	col.shape = shape
 	node.add_child(col)
 	node.collision_layer = 2
@@ -155,7 +256,6 @@ func _spawn_resource(type: String, pos: Vector2):
 	timer.one_shot = true
 	node.add_child(timer)
 	
-	# Harvest particles
 	var particles = GPUParticles2D.new()
 	particles.name = "HarvestParticles"
 	particles.amount = 6
@@ -172,14 +272,10 @@ func _spawn_resource(type: String, pos: Vector2):
 	p_mat.scale_max = 0.6
 	var p_color: Color
 	match type:
-		"tree":
-			p_color = Color(0.4, 0.8, 0.3, 0.8)
-		"rock":
-			p_color = Color(0.7, 0.7, 0.75, 0.8)
-		"gold":
-			p_color = Color(1.0, 0.85, 0.0, 0.8)
-		_:
-			p_color = Color.WHITE
+		"tree": p_color = Color(0.4, 0.8, 0.3, 0.8)
+		"rock": p_color = Color(0.7, 0.7, 0.75, 0.8)
+		"gold": p_color = Color(1.0, 0.85, 0.0, 0.8)
+		_: p_color = Color.WHITE
 	p_mat.color = p_color
 	particles.process_material = p_mat
 	node.add_child(particles)
@@ -201,15 +297,13 @@ func _spawn_building(type: String, pos: Vector2):
 	node.set_script(script_bld)
 	node.building_type = type
 	
-	# Shadow
 	var shadow = Sprite2D.new()
 	shadow.name = "Shadow"
 	shadow.texture = _create_shadow_texture(40, 16)
-	shadow.position = Vector2(0, 30)
+	shadow.position = Vector2(0, 20)
 	shadow.z_index = -1
 	node.add_child(shadow)
 	
-	# Glow (for interaction feedback)
 	var glow_sprite = Sprite2D.new()
 	glow_sprite.name = "Glow"
 	glow_sprite.texture = _create_glow_texture()
@@ -229,7 +323,7 @@ func _spawn_building(type: String, pos: Vector2):
 	var col = CollisionShape2D.new()
 	col.name = "CollisionShape2D"
 	var shape = RectangleShape2D.new()
-	shape.size = Vector2(60, 60)
+	shape.size = Vector2(30, 30)
 	col.shape = shape
 	node.add_child(col)
 	node.collision_layer = 4
@@ -248,7 +342,7 @@ func _spawn_building(type: String, pos: Vector2):
 	
 	var label = Label.new()
 	label.name = "InteractLabel"
-	label.position = Vector2(-60, -70)
+	label.position = Vector2(-60, -50)
 	label.add_theme_font_size_override("font_size", 14)
 	label.add_theme_color_override("font_color", Color.WHITE)
 	label.add_theme_color_override("font_shadow_color", Color.BLACK)
@@ -263,9 +357,15 @@ func _random_island_pos() -> Vector2:
 	var dist = randf() * (island_radius - 100)
 	return Vector2(cos(angle), sin(angle)) * dist
 
+func _random_island_pos_rng(rng: RandomNumberGenerator) -> Vector2:
+	var angle = rng.randf() * TAU
+	var dist = rng.randf() * (island_radius - 100)
+	return Vector2(cos(angle), sin(angle)) * dist
+
 func expand_island():
 	island_radius += 64.0 * 3
 	_generate_island()
+	_spawn_path()
 	for i in range(3):
 		_spawn_resource("tree", _random_island_pos())
 	for i in range(2):
@@ -274,9 +374,8 @@ func expand_island():
 	_show_expand_effect()
 
 func _show_expand_effect():
-	# Flash effect when island expands
 	var flash = ColorRect.new()
-	flash.color = Color(1, 1, 0.8, 0.3)
+	flash.color = Color(0.36, 0.88, 0.93, 0.2)
 	flash.size = Vector2(2000, 2000)
 	flash.position = player.position - Vector2(1000, 1000)
 	add_child(flash)
@@ -284,16 +383,13 @@ func _show_expand_effect():
 	tween.tween_property(flash, "color:a", 0.0, 0.5)
 	tween.tween_callback(flash.queue_free)
 
-# ===== TEXTURE HELPERS =====
 func _create_shadow_texture(w: int, h: int) -> ImageTexture:
 	var img = Image.create(w * 2, h * 2, false, Image.FORMAT_RGBA8)
-	var center = Vector2(w, h)
 	for x in range(w * 2):
 		for y in range(h * 2):
-			var dist = Vector2(x - w, y - h) / Vector2(w, h)
-			var len = dist.length()
-			if len < 1.0:
-				var alpha = int(80 * (1.0 - len))
+			var dist = Vector2(float(x - w) / w, float(y - h) / h).length()
+			if dist < 1.0:
+				var alpha = int(80 * (1.0 - dist))
 				img.set_pixel(x, y, Color(0, 0, 0, alpha / 255.0))
 	return ImageTexture.create_from_image(img)
 
@@ -306,5 +402,5 @@ func _create_glow_texture() -> ImageTexture:
 			var dist = Vector2(x - center, y - center).length() / (size / 2.0)
 			if dist < 1.0:
 				var alpha = int(60 * (1.0 - dist * dist))
-				img.set_pixel(x, y, Color(1, 0.9, 0.5, alpha / 255.0))
+				img.set_pixel(x, y, Color(0.36, 0.88, 0.93, alpha / 255.0))
 	return ImageTexture.create_from_image(img)
