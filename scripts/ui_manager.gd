@@ -38,6 +38,7 @@ func _ready():
 	_update_ui()
 	_add_vignette()
 	_create_hp_bar()
+	_create_reward_button()
 	_animate_ui_in()
 
 func _create_hp_bar():
@@ -276,3 +277,53 @@ func _show_message(text: String, color: Color):
 
 func set_player(p: Node2D):
 	player_node = p
+
+func _create_reward_button():
+	# Rewarded video button
+	var reward_btn = Button.new()
+	reward_btn.name = "RewardButton"
+	reward_btn.text = "🎬 Watch Ad +50 Coins"
+	reward_btn.position = Vector2(20, 100)
+	reward_btn.size = Vector2(180, 40)
+	reward_btn.add_theme_font_size_override("font_size", 14)
+	reward_btn.add_theme_color_override("font_color", Color.WHITE)
+	
+	# Style
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.2, 0.6, 0.3, 0.9)
+	style.border_color = Color(0.1, 0.4, 0.2, 1.0)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	reward_btn.add_theme_stylebox_override("normal", style)
+	
+	var style_hover = StyleBoxFlat.new()
+	style_hover.bg_color = Color(0.3, 0.7, 0.4, 0.95)
+	style_hover.border_color = Color(0.2, 0.5, 0.3, 1.0)
+	style_hover.set_border_width_all(2)
+	style_hover.set_corner_radius_all(8)
+	reward_btn.add_theme_stylebox_override("hover", style_hover)
+	
+	var style_pressed = StyleBoxFlat.new()
+	style_pressed.bg_color = Color(0.15, 0.5, 0.25, 0.9)
+	style_pressed.border_color = Color(0.1, 0.4, 0.2, 1.0)
+	style_pressed.set_border_width_all(2)
+	style_pressed.set_corner_radius_all(8)
+	reward_btn.add_theme_stylebox_override("pressed", style_pressed)
+	
+	reward_btn.pressed.connect(_on_reward_pressed)
+	add_child(reward_btn)
+	
+	# Connect to YandexSDK signals
+	YandexSDK.reward_earned.connect(_on_reward_earned)
+	YandexSDK.reward_error.connect(_on_reward_error)
+
+func _on_reward_pressed():
+	YandexSDK.show_rewarded_video("coins", 50)
+
+func _on_reward_earned(reward_type: String, reward_value: String):
+	_show_message("🎁 +%s %s!" % [reward_value, reward_type.capitalize()], Color(0.3, 1, 0.3))
+	# Submit to leaderboard
+	YandexSDK.submit_score("coins", GameData.coins)
+
+func _on_reward_error(error: String):
+	_show_message("❌ Ad failed: %s" % error, Color(1, 0.4, 0.4))

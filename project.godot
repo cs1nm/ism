@@ -13,6 +13,8 @@ config/features=PackedStringArray("4.3", "GL Compatibility")
 
 GameData="*res://scripts/game_data.gd"
 LocationManager="*res://scripts/location_manager.gd"
+YandexSDK="*res://scripts/yandex_sdk.gd"
+SaveManager="*res://scripts/save_manager.gd"
 
 [display]
 
