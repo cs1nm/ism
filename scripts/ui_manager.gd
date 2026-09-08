@@ -313,6 +313,27 @@ func _create_reward_button():
 	reward_btn.pressed.connect(_on_reward_pressed)
 	add_child(reward_btn)
 	
+	# Achievement button
+	var ach_btn = Button.new()
+	ach_btn.name = "AchievementsButton"
+	ach_btn.text = "🏆 Achievements"
+	ach_btn.position = Vector2(20, 150)
+	ach_btn.size = Vector2(180, 40)
+	ach_btn.add_theme_font_size_override("font_size", 14)
+	
+	var ach_style = StyleBoxFlat.new()
+	ach_style.bg_color = Color(0.3, 0.2, 0.4, 0.9)
+	ach_style.border_color = Color(0.5, 0.3, 0.7, 1.0)
+	ach_style.set_border_width_all(2)
+	ach_style.set_corner_radius_all(8)
+	ach_btn.add_theme_stylebox_override("normal", ach_style)
+	
+	ach_btn.pressed.connect(_on_achievements_pressed)
+	add_child(ach_btn)
+	
+	# Create achievements panel (hidden by default)
+	_create_achievements_panel()
+	
 	# Connect to YandexSDK signals
 	YandexSDK.reward_earned.connect(_on_reward_earned)
 	YandexSDK.reward_error.connect(_on_reward_error)
@@ -327,3 +348,119 @@ func _on_reward_earned(reward_type: String, reward_value: String):
 
 func _on_reward_error(error: String):
 	_show_message("❌ Ad failed: %s" % error, Color(1, 0.4, 0.4))
+
+var achievements_panel: PanelContainer = null
+
+func _create_achievements_panel():
+	achievements_panel = PanelContainer.new()
+	achievements_panel.name = "AchievementsPanel"
+	achievements_panel.position = Vector2(220, 50)
+	achievements_panel.size = Vector2(350, 500)
+	achievements_panel.visible = false
+	achievements_panel.z_index = 50
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.15, 0.12, 0.2, 0.95)
+	style.border_color = Color(0.4, 0.3, 0.6, 1.0)
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(12)
+	achievements_panel.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	achievements_panel.add_child(vbox)
+	
+	# Title
+	var title = Label.new()
+	title.text = "🏆 Achievements"
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", Color(1, 0.85, 0))
+	vbox.add_child(title)
+	
+	# Scroll container
+	var scroll = ScrollContainer.new()
+	scroll.size = Vector2(330, 420)
+	vbox.add_child(scroll)
+	
+	var content = VBoxContainer.new()
+	content.name = "AchievementList"
+	content.add_theme_constant_override("separation", 8)
+	scroll.add_child(content)
+	
+	# Close button
+	var close_btn = Button.new()
+	close_btn.text = "Close"
+	close_btn.pressed.connect(func(): achievements_panel.visible = false)
+	vbox.add_child(close_btn)
+	
+	add_child(achievements_panel)
+
+func _on_achievements_pressed():
+	achievements_panel.visible = !achievements_panel.visible
+	if achievements_panel.visible:
+		_refresh_achievements_list()
+
+func _refresh_achievements_list():
+	var list = achievements_panel.get_node("PanelContainer/VBoxContainer/ScrollContainer/AchievementList")
+	if not list:
+		# Try alternative path
+		list = achievements_panel.find_child("AchievementList", true, false)
+	
+	if not list:
+		return
+	
+	# Clear existing
+	for child in list.get_children():
+		child.queue_free()
+	
+	# Add achievements
+	var unlocked_count = 0
+	for ach_id in Achievements.achievements:
+		var ach = Achievements.achievements[ach_id]
+		if ach.unlocked:
+			unlocked_count += 1
+		
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		
+		var icon = Label.new()
+		icon.text = ach.icon
+		icon.add_theme_font_size_override("font_size", 24)
+		row.add_child(icon)
+		
+		var info = VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		var name_label = Label.new()
+		name_label.text = ach.name
+		name_label.add_theme_font_size_override("font_size", 14)
+		name_label.add_theme_color_override("font_color", 
+			Color(1, 0.85, 0) if ach.unlocked else Color(0.5, 0.5, 0.5))
+		info.add_child(name_label)
+		
+		var desc_label = Label.new()
+		desc_label.text = ach.description
+		desc_label.add_theme_font_size_override("font_size", 11)
+		desc_label.add_theme_color_override("font_color", 
+			Color(0.8, 0.8, 0.8) if ach.unlocked else Color(0.4, 0.4, 0.4))
+		info.add_child(desc_label)
+		
+		row.add_child(info)
+		
+		# Status
+		var status = Label.new()
+		status.text = "✓" if ach.unlocked else "🔒"
+		status.add_theme_font_size_override("font_size", 20)
+		row.add_child(status)
+		
+		list.add_child(row)
+	
+	# Add counter at top
+	var counter = list.get_children()[0] if list.get_child_count() > 0 else null
+	if counter:
+		var count_label = Label.new()
+		count_label.text = "Unlocked: %d / %d" % [unlocked_count, Achievements.achievements.size()]
+		count_label.add_theme_font_size_override("font_size", 12)
+		count_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		list.add_child(count_label)
+		list.move_child(count_label, 0)

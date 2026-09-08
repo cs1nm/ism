@@ -737,6 +737,9 @@ func _spawn_enemy(enemy_type: String, pos: Vector2):
 	enemies_container.add_child(enemy)
 
 func _on_enemy_died(enemy: CharacterBody2D, drops: Dictionary):
+	# Track achievement
+	Achievements.on_enemy_killed()
+	
 	# Apply drops
 	for resource_type in drops:
 		var amount = drops[resource_type]

@@ -191,6 +191,7 @@ func _on_harvest_tick():
 		if added > 0:
 			current_resource.take_damage(amount)
 			resource_collected.emit(res_type, added)
+			Achievements.on_resource_collected(res_type, added)
 			var mult_text = "" if mult <= 1.0 else " x%d" % int(mult)
 			harvest_indicator.text = "+%d %s%s" % [added, res_type.capitalize(), mult_text]
 			_spawn_floating_text("+%d%s" % [added, mult_text], Color.GREEN)
