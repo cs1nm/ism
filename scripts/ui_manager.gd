@@ -215,6 +215,7 @@ func _on_sell_pressed():
 		var earned = GameData.sell_all()
 		_show_message("Sold for %d coins!" % earned, Color(1, 0.85, 0))
 		_animate_coins(earned)
+		SoundManager.play_sound("sell")
 	else:
 		_show_message("Backpack is empty!", Color(1, 0.5, 0.5))
 
@@ -238,6 +239,7 @@ func _on_speed_upgrade():
 	if GameData.upgrade_speed():
 		_show_message("Speed upgraded!", Color(0.5, 0.9, 1))
 		_bump_label(speed_level_label)
+		SoundManager.play_sound("upgrade")
 	else:
 		_show_message("Not enough coins!", Color(1, 0.5, 0.5))
 
@@ -245,6 +247,7 @@ func _on_backpack_upgrade():
 	if GameData.upgrade_backpack():
 		_show_message("Backpack upgraded!", Color(0.5, 1, 0.5))
 		_bump_label(backpack_level_label)
+		SoundManager.play_sound("upgrade")
 	else:
 		_show_message("Not enough coins!", Color(1, 0.5, 0.5))
 
@@ -252,6 +255,7 @@ func _on_expand():
 	if GameData.expand_island():
 		_show_message("Island expanded!", Color(1, 1, 0.5))
 		_bump_label(island_level_label)
+		SoundManager.play_sound("upgrade")
 		get_tree().call_group("world", "expand_island")
 	else:
 		_show_message("Not enough coins!", Color(1, 0.5, 0.5))

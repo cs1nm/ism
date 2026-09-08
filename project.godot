@@ -15,7 +15,9 @@ GameData="*res://scripts/game_data.gd"
 LocationManager="*res://scripts/location_manager.gd"
 YandexSDK="*res://scripts/yandex_sdk.gd"
 Achievements="*res://scripts/achievements.gd"
+SoundManager="*res://scripts/sound_manager.gd"
 SaveManager="*res://scripts/save_manager.gd"
+Tutorial="*res://scripts/tutorial.gd"
 
 [display]
 

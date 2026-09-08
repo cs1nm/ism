@@ -739,6 +739,7 @@ func _spawn_enemy(enemy_type: String, pos: Vector2):
 func _on_enemy_died(enemy: CharacterBody2D, drops: Dictionary):
 	# Track achievement
 	Achievements.on_enemy_killed()
+	SoundManager.play_sound("enemy_die")
 	
 	# Apply drops
 	for resource_type in drops:

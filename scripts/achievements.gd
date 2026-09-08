@@ -241,6 +241,7 @@ func _unlock_achievement(achievement_id: String):
 	
 	print("[Achievements] Unlocked: ", ach.name)
 	achievement_unlocked.emit(achievement_id)
+	SoundManager.play_sound("achievement")
 	
 	# Show notification
 	_show_achievement_notification(ach)

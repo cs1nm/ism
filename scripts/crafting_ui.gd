@@ -120,6 +120,7 @@ func _on_craft(action: String):
 		if LocationManager.travel_to(loc_id):
 			success = true
 			msg = "Traveling to %s!" % LocationManager.locations[loc_id].name
+			SoundManager.play_sound("portal")
 		else:
 			msg = "Cannot travel there!"
 	elif action.begins_with("unlock_"):
